@@ -71,13 +71,8 @@ function plateResult = Step5_Recognize(charImgs)
         if size(img, 3) == 3
             img = rgb2gray(img);
         end
-        img = double(img);
+        img = imbinarize(img);
         img = imresize(img, targetSize);
-        % 确保极性一致：白字黑底（字符=1）
-        if mean(img(:)) > 0.5
-            img = 1 - img;
-        end
-        img = logical(img);
 
         % 提取HOG特征
         hogFeature = extractHOGFeatures(img, 'CellSize', [4 4]);
