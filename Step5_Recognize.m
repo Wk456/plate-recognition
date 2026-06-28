@@ -1,7 +1,7 @@
 function plateResult = Step5_Recognize(charImgs)
     % Step5_Recognize: 车牌字符识别
     %
-    % 方法：HOG特征提取 + SVM分类器（模板匹配备选）
+    % 方法：CNN卷积神经网络分类（模板匹配备选）
     % 输入：
     %   charImgs - 1x7 cell数组，包含分割后的7个字符图片
     % 输出：
@@ -11,7 +11,7 @@ function plateResult = Step5_Recognize(charImgs)
 
     %% 定义字符类别
     templateFolder = [pwd '\字符模板(4020)\'];
-    targetSize = [40 20];
+    targetSize = [28 14];
 
     % 第1位：省份汉字（31个）
     chineseChars = {'藏','川','鄂','甘','赣','港','桂','贵','黑','沪',...
@@ -29,32 +29,32 @@ function plateResult = Step5_Recognize(charImgs)
                      'L','M','N','P','Q','R','S','T','U','V',...
                      'W','X','Y','Z'};
 
-    %% 加载已训练的分类器
-    disp('  加载分类器模型...');
+    %% 加载已训练的CNN模型
+    disp('  加载CNN模型...');
 
-    classifierChinese = [];
-    classifierLetter = [];
-    classifierAlphanum = [];
+    netChinese = [];
+    netLetter = [];
+    netAlphanum = [];
 
-    if exist('classifierChinese.mat', 'file')
-        load('classifierChinese.mat', 'classifierChinese');
-        disp('    汉字分类器加载成功');
+    if exist('cnn_Chinese.mat', 'file')
+        load('cnn_Chinese.mat', 'netChinese');
+        disp('    汉字CNN加载成功');
     else
-        disp('    警告：classifierChinese.mat 不存在，请先运行 TrainModel.m');
+        disp('    警告：cnn_Chinese.mat 不存在，请先运行 TrainCNN.m');
     end
 
-    if exist('classifierLetter.mat', 'file')
-        load('classifierLetter.mat', 'classifierLetter');
-        disp('    字母分类器加载成功');
+    if exist('cnn_Letter.mat', 'file')
+        load('cnn_Letter.mat', 'netLetter');
+        disp('    字母CNN加载成功');
     else
-        disp('    警告：classifierLetter.mat 不存在，请先运行 TrainModel.m');
+        disp('    警告：cnn_Letter.mat 不存在，请先运行 TrainCNN.m');
     end
 
-    if exist('classifierAlphanum.mat', 'file')
-        load('classifierAlphanum.mat', 'classifierAlphanum');
-        disp('    字母数字分类器加载成功');
+    if exist('cnn_Alphanum.mat', 'file')
+        load('cnn_Alphanum.mat', 'netAlphanum');
+        disp('    字母数字CNN加载成功');
     else
-        disp('    警告：classifierAlphanum.mat 不存在，请先运行 TrainModel.m');
+        disp('    警告：cnn_Alphanum.mat 不存在，请先运行 TrainCNN.m');
     end
 
     %% 识别字符
@@ -65,40 +65,46 @@ function plateResult = Step5_Recognize(charImgs)
     for i = 1:7
         img = charImgs{i};
 
-        % 预处理
+        % 预处理：与训练时保持一致
         if size(img, 3) == 3
             img = rgb2gray(img);
         end
-        img = imbinarize(img);
+        if ~islogical(img)
+            img = imbinarize(img);
+        end
+        img = double(img);
         img = imresize(img, targetSize);
 
-        % 提取HOG特征
-        hogFeature = extractHOGFeatures(img, 'CellSize', [4 4]);
+        % 转为CNN输入格式 H×W×1（单通道）
+        imgCNN = reshape(img, [targetSize, 1]);
 
-        % 根据位置选择对应的分类器
+        % 根据位置选择对应的CNN模型
         switch i
             case 1
-                if ~isempty(classifierChinese)
-                    [predictedLabel, ~] = predict(classifierChinese, hogFeature);
+                if ~isempty(netChinese)
+                    result = classify(netChinese, imgCNN);
+                    predictedLabel = char(result);
                 else
                     predictedLabel = templateMatch(img, chineseChars, templateFolder, targetSize);
                 end
             case 2
-                if ~isempty(classifierLetter)
-                    [predictedLabel, ~] = predict(classifierLetter, hogFeature);
+                if ~isempty(netLetter)
+                    result = classify(netLetter, imgCNN);
+                    predictedLabel = char(result);
                 else
                     predictedLabel = templateMatch(img, letterChars, templateFolder, targetSize);
                 end
             case {3, 4, 5, 6, 7}
-                if ~isempty(classifierAlphanum)
-                    [predictedLabel, ~] = predict(classifierAlphanum, hogFeature);
+                if ~isempty(netAlphanum)
+                    result = classify(netAlphanum, imgCNN);
+                    predictedLabel = char(result);
                 else
                     predictedLabel = templateMatch(img, alphanumChars, templateFolder, targetSize);
                 end
         end
 
-        plateResult = [plateResult, predictedLabel{1}];
-        disp(['  第' num2str(i) '位: ' predictedLabel{1}]);
+        plateResult = [plateResult, predictedLabel];
+        disp(['  第' num2str(i) '位: ' predictedLabel]);
     end
 
     %% 显示结果
@@ -159,5 +165,5 @@ function predictedLabel = templateMatch(img, charList, templateFolder, targetSiz
         end
     end
 
-    predictedLabel = {bestChar};
+    predictedLabel = bestChar;
 end
