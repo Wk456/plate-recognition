@@ -29,34 +29,32 @@ function plateResult = Step5_Recognize(charImgs)
                      'L','M','N','P','Q','R','S','T','U','V',...
                      'W','X','Y','Z'};
 
-    %% 训练分类器
-    disp('  提取HOG特征并训练分类器...');
+    %% 加载已训练的分类器
+    disp('  加载分类器模型...');
 
-    % 训练汉字分类器
-    [chineseFeatures, chineseLabels] = extractFeatures(chineseChars, templateFolder, targetSize);
-    uniqueChinese = unique(chineseLabels);
-    if size(chineseFeatures, 1) > 0 && length(uniqueChinese) > 1
-        classifierChinese = fitcecoc(chineseFeatures, chineseLabels);
+    classifierChinese = [];
+    classifierLetter = [];
+    classifierAlphanum = [];
+
+    if exist('classifierChinese.mat', 'file')
+        load('classifierChinese.mat', 'classifierChinese');
+        disp('    汉字分类器加载成功');
     else
-        classifierChinese = [];
+        disp('    警告：classifierChinese.mat 不存在，请先运行 TrainModel.m');
     end
 
-    % 训练字母分类器
-    [letterFeatures, letterLabels] = extractFeatures(letterChars, templateFolder, targetSize);
-    uniqueLetter = unique(letterLabels);
-    if size(letterFeatures, 1) > 0 && length(uniqueLetter) > 1
-        classifierLetter = fitcecoc(letterFeatures, letterLabels);
+    if exist('classifierLetter.mat', 'file')
+        load('classifierLetter.mat', 'classifierLetter');
+        disp('    字母分类器加载成功');
     else
-        classifierLetter = [];
+        disp('    警告：classifierLetter.mat 不存在，请先运行 TrainModel.m');
     end
 
-    % 训练字母数字分类器
-    [alphanumFeatures, alphanumLabels] = extractFeatures(alphanumChars, templateFolder, targetSize);
-    uniqueAlphanum = unique(alphanumLabels);
-    if size(alphanumFeatures, 1) > 0 && length(uniqueAlphanum) > 1
-        classifierAlphanum = fitcecoc(alphanumFeatures, alphanumLabels);
+    if exist('classifierAlphanum.mat', 'file')
+        load('classifierAlphanum.mat', 'classifierAlphanum');
+        disp('    字母数字分类器加载成功');
     else
-        classifierAlphanum = [];
+        disp('    警告：classifierAlphanum.mat 不存在，请先运行 TrainModel.m');
     end
 
     %% 识别字符
@@ -126,38 +124,6 @@ function plateResult = Step5_Recognize(charImgs)
     text(0.5, 0.5, plateResult, 'FontSize', 24, 'HorizontalAlignment', 'center');
     axis off;
     title('识别结果');
-end
-
-%% 辅助函数：提取特征
-function [features, labels] = extractFeatures(charList, templateFolder, targetSize)
-    features = [];
-    labels = {};
-
-    for i = 1:length(charList)
-        charName = charList{i};
-        templatePath = [templateFolder charName '.bmp'];
-
-        if exist(templatePath, 'file')
-            try
-                img = imread(templatePath);
-                if size(img, 3) == 3
-                    img = rgb2gray(img);
-                end
-                if ~islogical(img)
-                    img = imbinarize(img);
-                end
-                img = double(img);
-                img = imresize(img, targetSize);
-
-                hogFeature = extractHOGFeatures(img, 'CellSize', [4 4]);
-
-                features = [features; hogFeature];
-                labels = [labels; {charName}];
-            catch e
-                disp(['    警告: 读取 ' charName '.bmp 失败: ' e.message]);
-            end
-        end
-    end
 end
 
 %% 辅助函数：模板匹配（备选方案）
