@@ -17,7 +17,8 @@ function imgPreprocessed = Step2_Preprocess(imgOriginal)
     title('Step 2.1: 灰度图片');
 
     % --- Step 2.2: 自适应Canny边缘检测 ---
-    imgEdge = edge(imgGray, 'canny');
+    % 使用双阈值自动计算，比单阈值0.5更稳定
+    imgEdge = edge(imgGray, 'canny', [0.1 0.25]);
 
     subplot(3, 2, 3);
     imshow(imgEdge);
