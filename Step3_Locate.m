@@ -1,5 +1,5 @@
 function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
-    % Step3_Locate: 车牌定位
+    % Step3_Locate: 车牌定位（自适应阈值）
     %
     % 方法：垂直投影定位行边界 + 水平投影定位列边界
     %
@@ -9,11 +9,7 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
     %
     % 输出：
     %   imgLocated - 精确定位后的车牌二值图
-    %
-    % 使用方法：
-    %   imgLocated = Step3_Locate(imgPreprocessed, imgOriginal);
 
-    % 获取图像尺寸
     [imgHeight, imgWidth] = size(imgPreprocessed);
     imgDouble = double(imgPreprocessed);
 
@@ -29,7 +25,10 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
     end
 
     % 找到白色像素最多的行（车牌中心行）
-    [~, maxRowIdx] = max(projVertical);
+    [maxProjVal, maxRowIdx] = max(projVertical);
+
+    % 自适应阈值：取最大值的10%
+    verticalThreshold = maxProjVal * 0.1;
 
     % 绘制垂直投影图
     subplot(2, 2, 2);
@@ -40,12 +39,12 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
 
     % 从中心行向上下扩展，确定车牌上下边界
     rowTop = maxRowIdx;
-    while ((projVertical(rowTop, 1) >= 50) && (rowTop > 1))
+    while ((projVertical(rowTop, 1) >= verticalThreshold) && (rowTop > 1))
         rowTop = rowTop - 1;
     end
 
     rowBottom = maxRowIdx;
-    while ((projVertical(rowBottom, 1) >= 50) && (rowBottom < imgHeight))
+    while ((projVertical(rowBottom, 1) >= verticalThreshold) && (rowBottom < imgHeight))
         rowBottom = rowBottom + 1;
     end
 
@@ -60,6 +59,10 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
         end
     end
 
+    % 自适应阈值：取最大值的5%
+    maxHorizontal = max(projHorizontal);
+    horizontalThreshold = maxHorizontal * 0.05;
+
     % 绘制水平投影图
     subplot(2, 2, 4);
     plot(0:imgWidth-1, projHorizontal);
@@ -69,12 +72,12 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
 
     % 找到左右边界
     colLeft = 1;
-    while ((projHorizontal(1, colLeft) < 3) && (colLeft < imgWidth))
+    while ((projHorizontal(1, colLeft) < horizontalThreshold) && (colLeft < imgWidth))
         colLeft = colLeft + 1;
     end
 
     colRight = imgWidth;
-    while ((projHorizontal(1, colRight) < 3) && (colRight > colLeft))
+    while ((projHorizontal(1, colRight) < horizontalThreshold) && (colRight > colLeft))
         colRight = colRight - 1;
     end
 
@@ -85,12 +88,10 @@ function imgLocated = Step3_Locate(imgPreprocessed, imgOriginal)
     imshow(imgCoarseLocated);
     title('Step 3: 粗定位结果');
 
-    % --- Step 3.3: 精确定位 - 二值化 ---
+    % --- Step 3.3: 精确定位 - Otsu自适应二值化 ---
     imgCoarseGray = rgb2gray(imgCoarseLocated);
-    grayMax = double(max(max(imgCoarseGray)));
-    grayMin = double(min(min(imgCoarseGray)));
-    threshold = round(grayMax - (grayMax - grayMin) / 3);
-    imgCoarseBinary = im2bw(imgCoarseGray, threshold / 256);
+    level = graythresh(imgCoarseGray);
+    imgCoarseBinary = im2bw(imgCoarseGray, level);
 
     figure('Name', 'Step 3: 精确定位');
     subplot(2, 2, 1);
