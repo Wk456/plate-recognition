@@ -18,11 +18,11 @@ imgPreprocessed = Step2_Preprocess(imgOriginal);
 disp('  预处理完成');
 disp(' ');
 
-% Step 3: 车牌定位
+% Step 3: 车牌定位 + 倾斜校正
 disp('========================================');
 disp('  [Step 3] 车牌定位...');
 disp('========================================');
-imgLocated = Step3_Locate(imgPreprocessed, imgOriginal);
+[imgLocated, imgGrayPlate] = Step3_Locate(imgPreprocessed, imgOriginal);
 disp('  车牌定位完成');
 disp(' ');
 
@@ -31,21 +31,19 @@ disp('========================================');
 disp('  [Step 4] 字符分割...');
 disp('========================================');
 Step4_Segment(imgLocated);
+disp('  字符分割完成');
 disp(' ');
 
 % Step 5: 字符识别
 disp('========================================');
 disp('  [Step 5] 字符识别...');
 disp('========================================');
-% 读取分割后的字符图片
 charImgs = cell(1, 7);
 for i = 1:7
     charImgs{i} = imread(fullfile('temp_segments', [int2str(i) '.jpg']));
 end
 plateResult = Step5_Recognize(charImgs);
-disp(' ');
+
 disp('========================================');
-disp('  所有步骤完成！');
-disp('========================================');
-disp(['  最终识别结果: ' plateResult]);
+disp('  全部流程完成');
 disp('========================================');
