@@ -39,7 +39,7 @@ function Step4_Segment(imgLocated)
     areas = areas(validIdx);
 
     % 4. 按 x 坐标排序
-    bboxes = cat(1, stats.BoundingBox); % N x 4: [x, y, w, h]
+    bboxes = cat(1, stats.BoundingBox);
     [~, sortIdx] = sort(bboxes(:, 1));
     stats = stats(sortIdx);
     bboxes = bboxes(sortIdx, :);
@@ -57,12 +57,10 @@ function Step4_Segment(imgLocated)
             curBox = stats(k).BoundingBox;
             curRight = curBox(1) + curBox(3);
             curPixels = stats(k).PixelIdxList;
-            % 合并后面距离过近的连通域
             while k < n
                 nextBox = stats(k+1).BoundingBox;
                 gap = nextBox(1) - curRight;
                 if gap < mergeGap
-                    % 合并
                     newX = min(curBox(1), nextBox(1));
                     newY = min(curBox(2), nextBox(2));
                     newRight = max(curRight, nextBox(1) + nextBox(3));
@@ -87,55 +85,31 @@ function Step4_Segment(imgLocated)
 
     % 6. 选择7个最佳字符连通域
     nCandidates = length(stats);
-    bboxes = cat(1, stats.BoundingBox);
 
     if nCandidates == 7
         charStats = stats;
     elseif nCandidates > 7
-        % 按面积降序，取前7个
         allAreas = arrayfun(@(s) s.Area, stats);
         [~, areaIdx] = sort(allAreas, 'descend');
         charStats = stats(areaIdx(1:7));
-        % 重新按 x 排序
         bboxes = cat(1, charStats.BoundingBox);
         [~, xIdx] = sort(bboxes(:, 1));
         charStats = charStats(xIdx);
     else
-        % 不足7个，用投影法补充
-        warning('连通域不足7个(%d个)，使用投影法补充', nCandidates);
+        warning('连通域不足7个(%d个)', nCandidates);
         charStats = stats;
     end
 
     % 7. 裁剪并保存
-    figure('Name', 'Step 4: 字符分割');
-
-    subplot(3, 7, 1:7);
-    imshow(imgReady);
-    title('二值图');
-
-    subplot(3, 7, 8:14);
-    proj = sum(imgReady, 1);
-    bar(proj);
-    hold on;
-
     for i = 1:min(7, length(charStats))
         bbox = charStats(i).BoundingBox;
         x1 = max(1, round(bbox(1)));
         y1 = max(1, round(bbox(2)));
         x2 = min(segW, round(bbox(1) + bbox(3)));
         y2 = min(segH, round(bbox(2) + bbox(4)));
-
-        xline(x1, 'r--');
-        xline(x2, 'r--');
-
         imgChar = imgReady(y1:y2, x1:x2);
-
-        subplot(3, 7, 14 + i);
-        imshow(imgChar);
-        title(num2str(i));
         imwrite(imgChar, fullfile('temp_segments', strcat(int2str(i), '.jpg')));
     end
-    hold off;
 
     disp(['  字符分割完成 ' num2str(min(7, length(charStats))) '个']);
 end
